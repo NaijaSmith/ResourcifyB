@@ -1,14 +1,26 @@
-# Use an official JDK runtime as a parent image
-FROM openjdk:17-jdk-slim
-
-# Set the working directory inside the container
+# Build stage
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy Maven/Gradle build files and source code
-COPY . .
+# Copy pom.xml and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Build the application (Maven here — adjust if you use Gradle)
-RUN ./mvnw clean package -DskipTests
+# Copy source code
+COPY src ./src
 
-# Run the Spring Boot application
-CMD ["java", "-jar", "target/*.jar"]
+# Package the application
+RUN mvn clean package -DskipTests
+
+# Run stage
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+
+# Copy built JAR from build stage
+COPY --from=build /app/target/resourcify-backend-0.0.1-SNAPSHOT.jar app.jar
+
+# Expose port
+EXPOSE 8080
+
+# Run the app
+ENTRYPOINT ["java", "-jar", "app.jar"]

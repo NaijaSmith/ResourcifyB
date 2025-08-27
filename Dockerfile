@@ -1,26 +1,26 @@
-# Build stage
+# Stage 1: Build the application
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
+# Copy pom.xml and download dependencies to leverage Docker layer caching
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code
+# Copy the source code
 COPY src ./src
 
-# Package the application
+# Package the application. -DskipTests flag is used to skip tests during the build.
 RUN mvn clean package -DskipTests
 
-# Run stage
-FROM eclipse-temurin:21-jdk
+# Stage 2: Create the final, smaller runtime image
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copy built JAR from build stage
+# Copy the built JAR from the build stage to the final image
 COPY --from=build /app/target/resourcify-backend-0.0.1-SNAPSHOT.jar app.jar
 
-# Expose port
+# Expose the port the application will run on
 EXPOSE 8080
 
-# Run the app
+# Define the command to run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
